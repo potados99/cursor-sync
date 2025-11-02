@@ -1,0 +1,17 @@
+# Cursor 설정 데이터 (로컬마다 다름)
+CursorSettings/
+
+# 생성된 확장 설치 스크립트 (타임스탬프 포함)
+install-extensions-*.sh
+
+# macOS
+.DS_Store
+
+# 백업 파일
+*.backup
+*.bak
+*.tmp
+
+# 로그
+*.log
+
