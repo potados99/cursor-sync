@@ -57,23 +57,35 @@ for path in "${PARSED_INCLUDE_PATHS[@]}"; do
     
     # 출력
     echo -e "  • $path$has_exclusions"
-    
+
     if [ "$is_link" = true ]; then
-        echo -e "    ${BLUE}→ 이미 링크됨${NC}"
+        # 링크 대상 확인
+        if is_broken_link "$source"; then
+            echo -e "    ${RED}✗ 부서진 링크!${NC}"
+            local link_target=$(readlink "$source")
+            echo -e "    ${YELLOW}  대상: $link_target (존재하지 않음)${NC}"
+        elif is_correct_link "$path"; then
+            echo -e "    ${GREEN}✓ 올바른 링크${NC}"
+        else
+            local link_target=$(readlink "$source")
+            echo -e "    ${YELLOW}⚠ 잘못된 링크 대상${NC}"
+            echo -e "    ${YELLOW}  현재: $link_target${NC}"
+            echo -e "    ${YELLOW}  예상: $expected_target${NC}"
+        fi
     else
         if [ "$exists_local" = true ]; then
             echo -e "    ${GREEN}✓ 로컬 존재${NC}"
         else
             echo -e "    ${YELLOW}✗ 로컬 없음${NC}"
         fi
-        
+
         if [ "$exists_icloud" = true ]; then
             echo -e "    ${GREEN}✓ iCloud 존재${NC}"
         else
             echo -e "    ${YELLOW}✗ iCloud 없음${NC}"
         fi
     fi
-    
+
     echo ""
 done
 
@@ -123,7 +135,44 @@ for path in "${PARSED_INCLUDE_PATHS[@]}"; do
     echo ""
 done
 
-# 5. 경고 및 권장사항
+# 5. 부서진 링크 검사
+echo ""
+echo "🔍 부서진 링크 검사"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+broken_links=()
+for path in "${PARSED_INCLUDE_PATHS[@]}"; do
+    full_path="$LOCAL_USER_DIR/$path"
+    if [ -e "$full_path" ] || [ -L "$full_path" ]; then
+        while IFS= read -r link; do
+            if [ -n "$link" ]; then
+                broken_links+=("$link")
+            fi
+        done < <(find_broken_links "$full_path")
+    fi
+done
+
+if [ ${#broken_links[@]} -gt 0 ]; then
+    echo -e "${RED}⚠️  발견된 부서진 링크: ${#broken_links[@]}개${NC}"
+    echo ""
+    for link in "${broken_links[@]}"; do
+        rel_path="${link#$LOCAL_USER_DIR/}"
+        link_target=$(readlink "$link" 2>/dev/null || echo "알 수 없음")
+        echo -e "  ${RED}✗${NC} $rel_path"
+        echo -e "    ${YELLOW}→ $link_target${NC}"
+    done
+    echo ""
+    echo -e "${YELLOW}💡 조치 방법:${NC}"
+    echo "   1. unlink-sync.sh --broken 으로 부서진 링크 제거"
+    echo "   2. setup-sync.sh 로 다시 동기화 설정"
+    echo ""
+else
+    echo -e "  ${GREEN}✅ 부서진 링크 없음${NC}"
+    echo ""
+fi
+
+# 6. 경고 및 권장사항
 echo ""
 echo "⚠️  경고 및 권장사항"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -175,7 +224,7 @@ if [ $warnings -eq 0 ]; then
     echo ""
 fi
 
-# 6. 완료
+# 7. 완료
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "${GREEN}✨ 검증 완료${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -248,6 +248,81 @@ link_item() {
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 링크 상태 검사 함수
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 경로가 부서진 심볼릭 링크인지 확인
+# 링크는 있는데 대상 경로가 유효하지 않은 경우
+is_broken_link() {
+    local path="$1"
+
+    # 심볼릭 링크가 아니면 false
+    if [ ! -L "$path" ]; then
+        return 1
+    fi
+
+    # 링크 대상 읽기
+    local target=$(readlink "$path")
+
+    # 대상이 존재하지 않거나 접근할 수 없으면 부서진 링크
+    if [ ! -e "$target" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# 특정 경로 아래의 모든 부서진 링크 찾기 (재귀적)
+# 사용법: find_broken_links "/path/to/dir"
+# 출력: 부서진 링크들의 전체 경로 (한 줄에 하나씩)
+find_broken_links() {
+    local base_path="$1"
+
+    if [ ! -d "$base_path" ] && [ ! -e "$base_path" ]; then
+        return
+    fi
+
+    # 현재 경로가 부서진 링크면 출력
+    if is_broken_link "$base_path"; then
+        echo "$base_path"
+        return
+    fi
+
+    # 디렉토리면 내부 순회
+    if [ -d "$base_path" ]; then
+        for item in "$base_path"/*; do
+            if [ -e "$item" ] || [ -L "$item" ]; then
+                find_broken_links "$item"
+            fi
+        done
+    fi
+}
+
+# 특정 경로가 올바른 iCloud 경로를 가리키는 링크인지 확인
+# 사용법: is_correct_link "globalStorage/foo"
+# 반환: 0 (올바른 링크), 1 (링크 아님 또는 잘못된 대상)
+is_correct_link() {
+    local rel_path="$1"
+    local source="$LOCAL_USER_DIR/$rel_path"
+    local expected_target="$ICLOUD_DIR/$rel_path"
+
+    # 링크가 아니면 false
+    if [ ! -L "$source" ]; then
+        return 1
+    fi
+
+    # 실제 링크 대상 읽기
+    local actual_target=$(readlink "$source")
+
+    # 예상 대상과 일치하는지 확인
+    if [ "$actual_target" = "$expected_target" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 유틸리티 함수
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

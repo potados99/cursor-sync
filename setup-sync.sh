@@ -23,79 +23,182 @@ fi
 ensure_local_dir
 ensure_backup_dir
 
-# 이미 링크가 있는지 확인
-check_existing_links() {
-    local has_links=false
-    
-    echo "🔍 기존 심볼릭 링크 확인 중..."
-    
+# 최초 실행 시 User 디렉토리 전체 백업
+backup_user_dir_if_first_run() {
+    local marker_file="$BACKUP_DIR/.full_backup_done"
+
+    # 마커 파일이 있으면 이미 백업한 것으로 간주
+    if [ -f "$marker_file" ]; then
+        return
+    fi
+
+    echo "🎯 최초 실행 감지"
+    echo ""
+
+    # User 디렉토리가 존재하고 비어있지 않으면 백업
+    if [ -d "$LOCAL_USER_DIR" ] && [ "$(ls -A "$LOCAL_USER_DIR" 2>/dev/null)" ]; then
+        local timestamp=$(get_timestamp)
+        local full_backup="$BACKUP_DIR/User.full.$timestamp"
+
+        echo "💾 User 디렉토리 전체 백업 중..."
+        echo "   소스: $LOCAL_USER_DIR"
+        echo "   대상: $full_backup"
+        echo ""
+
+        cp -R "$LOCAL_USER_DIR" "$full_backup"
+
+        echo -e "${GREEN}✅ 전체 백업 완료${NC}"
+        echo ""
+
+        # 마커 파일 생성
+        touch "$marker_file"
+        echo "최초 실행 시 생성됨: $(date)" > "$marker_file"
+    else
+        # User 디렉토리가 없거나 비어있으면 마커만 생성
+        touch "$marker_file"
+        echo "User 디렉토리 없음 (마커만 생성): $(date)" > "$marker_file"
+    fi
+}
+
+# 기존 링크 분석 및 처리 계획 수립
+analyze_existing_links() {
+    local correct_links=()
+    local broken_links=()
+    local wrong_target_links=()
+    local missing_links=()
+
+    echo "🔍 기존 동기화 상태 확인 중..."
+    echo ""
+
     # 경로 파싱
     parse_sync_paths
-    
+
     # 각 포함 경로 확인
     for path in "${PARSED_INCLUDE_PATHS[@]}"; do
         local source="$LOCAL_USER_DIR/$path"
-        
+
         # 링크인지 확인
         if [ -L "$source" ]; then
-            echo -e "${YELLOW}   ⚠️  이미 링크됨: $path${NC}"
-            has_links=true
-            continue
-        fi
-        
-        # 디렉토리이고 하위에 제외가 있으면 내부도 확인
-        if [ -d "$source" ] && has_exclusions_under "$path"; then
-            for item in "$source"/*; do
-                if [ -L "$item" ]; then
-                    local item_name=$(basename "$item")
-                    echo -e "${YELLOW}   ⚠️  이미 링크됨: $path/$item_name${NC}"
-                    has_links=true
-                fi
-            done
+            if is_broken_link "$source"; then
+                broken_links+=("$path")
+            elif is_correct_link "$path"; then
+                correct_links+=("$path")
+            else
+                wrong_target_links+=("$path")
+            fi
+        else
+            # 링크가 아니면 누락된 것
+            missing_links+=("$path")
         fi
     done
-    
-    if [ "$has_links" = true ]; then
-        echo ""
-        echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${RED}❌ 이미 심볼릭 링크가 존재합니다!${NC}"
-        echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo "💡 링크를 제거하려면 다음 스크립트를 실행하세요:"
-        echo "   bash unlink-sync.sh"
-        echo ""
-        exit 1
+
+    # 상태 출력
+    if [ ${#correct_links[@]} -gt 0 ]; then
+        echo -e "${GREEN}✅ 올바른 링크: ${#correct_links[@]}개${NC}"
     fi
-    
-    echo -e "${GREEN}✅ 기존 링크 없음. 계속 진행합니다.${NC}"
+
+    if [ ${#broken_links[@]} -gt 0 ]; then
+        echo -e "${RED}⚠️  부서진 링크: ${#broken_links[@]}개${NC}"
+        for path in "${broken_links[@]}"; do
+            echo "   • $path"
+        done
+    fi
+
+    if [ ${#wrong_target_links[@]} -gt 0 ]; then
+        echo -e "${YELLOW}⚠️  잘못된 대상 링크: ${#wrong_target_links[@]}개${NC}"
+        for path in "${wrong_target_links[@]}"; do
+            echo "   • $path"
+        done
+    fi
+
+    if [ ${#missing_links[@]} -gt 0 ]; then
+        echo -e "${YELLOW}📝 누락된 항목: ${#missing_links[@]}개${NC}"
+        for path in "${missing_links[@]}"; do
+            echo "   • $path"
+        done
+    fi
+
     echo ""
+
+    # 전역 변수로 반환
+    CORRECT_LINKS=("${correct_links[@]}")
+    BROKEN_LINKS=("${broken_links[@]}")
+    WRONG_TARGET_LINKS=("${wrong_target_links[@]}")
+    MISSING_LINKS=("${missing_links[@]}")
+
+    # 수정이 필요한지 반환
+    if [ ${#broken_links[@]} -gt 0 ] || [ ${#wrong_target_links[@]} -gt 0 ] || [ ${#missing_links[@]} -gt 0 ]; then
+        return 0  # 수정 필요
+    else
+        return 1  # 모두 올바름
+    fi
 }
 
 # 메인 실행
 main() {
     # 설정 정보 출력
     print_sync_config
-    
-    # 1. 기존 링크 확인
-    check_existing_links
-    
-    # 2. 경로 파싱
-    parse_sync_paths
-    
-    # 3. 동기화 시작
-    echo "⚙️  동기화 중..."
-    echo ""
-    
-    for path in "${PARSED_INCLUDE_PATHS[@]}"; do
-        echo "📦 처리 중: $path"
-        recursive_link_path "$path" 0
+
+    # 1. 최초 실행 시 전체 백업
+    backup_user_dir_if_first_run
+
+    # 2. 기존 링크 분석
+    if analyze_existing_links; then
+        # 수정이 필요함
+        echo "🔧 수정이 필요한 항목이 있습니다."
         echo ""
+
+        # 부서진 링크 수리
+        if [ ${#BROKEN_LINKS[@]} -gt 0 ]; then
+            echo "🔨 부서진 링크 수리 중..."
+            for path in "${BROKEN_LINKS[@]}"; do
+                local source="$LOCAL_USER_DIR/$path"
+                echo "   🗑️  제거: $path (부서진 링크)"
+                rm "$source"
+            done
+            echo ""
+        fi
+
+        # 잘못된 대상 링크 수리
+        if [ ${#WRONG_TARGET_LINKS[@]} -gt 0 ]; then
+            echo "🔨 잘못된 링크 수리 중..."
+            for path in "${WRONG_TARGET_LINKS[@]}"; do
+                local source="$LOCAL_USER_DIR/$path"
+                echo "   🗑️  제거: $path (잘못된 대상)"
+                rm "$source"
+            done
+            echo ""
+        fi
+    else
+        # 모두 올바름
+        echo -e "${GREEN}✅ 모든 항목이 이미 올바르게 동기화되어 있습니다!${NC}"
+        echo ""
+        echo "💡 변경사항이 없으므로 작업을 종료합니다."
+        echo "   설정을 변경하려면 sync-config.sh를 수정한 후 다시 실행하세요."
+        echo ""
+        exit 0
+    fi
+
+    # 3. 경로 파싱
+    parse_sync_paths
+
+    # 4. 누락된 항목 동기화
+    echo "⚙️  누락된 항목 동기화 중..."
+    echo ""
+
+    # 수정이 필요한 항목만 처리
+    for path in "${BROKEN_LINKS[@]}" "${WRONG_TARGET_LINKS[@]}" "${MISSING_LINKS[@]}"; do
+        if [ -n "$path" ]; then
+            echo "📦 처리 중: $path"
+            recursive_link_path "$path" 0
+            echo ""
+        fi
     done
-    
+
     echo -e "${GREEN}✅ 동기화 완료${NC}"
     echo ""
-    
-    # 4. 완료
+
+    # 5. 완료
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo -e "${GREEN}✨ 동기화 셋업이 완료되었습니다!${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -108,9 +211,15 @@ main() {
     echo ""
     echo "✅ 동기화된 항목:"
     for path in "${PARSED_INCLUDE_PATHS[@]}"; do
-        echo "   • $path"
+        local status=""
+        if [[ " ${CORRECT_LINKS[@]} " =~ " $path " ]]; then
+            status=" ${GREEN}(이미 동기화됨)${NC}"
+        elif [[ " ${BROKEN_LINKS[@]} ${WRONG_TARGET_LINKS[@]} ${MISSING_LINKS[@]} " =~ " $path " ]]; then
+            status=" ${YELLOW}(수리/추가됨)${NC}"
+        fi
+        echo -e "   • $path$status"
     done
-    
+
     if [ ${#PARSED_EXCLUDE_PATHS[@]} -gt 0 ]; then
         echo ""
         echo "⏭️  제외된 항목 (로컬에만 유지):"
@@ -118,7 +227,7 @@ main() {
             echo "   • $path"
         done
     fi
-    
+
     echo ""
     echo "⚠️  주의사항:"
     echo "   - 여러 Mac에서 동시에 Cursor를 사용하면 충돌이 발생할 수 있습니다"
