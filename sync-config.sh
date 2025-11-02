@@ -25,6 +25,7 @@ BACKUP_DIR="$HOME/Library/Application Support/Cursor/User.backups"
 # - 제외(!)가 있으면 해당 depth까지 재귀적으로 개별 링크
 
 SYNC_PATHS=(
+    "script.js"
     "settings.json"
     "keybindings.json"
     "snippets"

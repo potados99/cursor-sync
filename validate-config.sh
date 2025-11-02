@@ -58,7 +58,11 @@ for path in "${PARSED_INCLUDE_PATHS[@]}"; do
     # 출력
     echo -e "  • $path$has_exclusions"
 
-    if [ "$is_link" = true ]; then
+    # 로컬과 iCloud 둘 다 없으면 경고
+    if [ "$exists_local" = false ] && [ "$exists_icloud" = false ]; then
+        echo -e "    ${YELLOW}ℹ️  설정에 명시되어 있지만 실제로 존재하지 않습니다${NC}"
+        echo -e "    ${YELLOW}   (setup-sync 실행 시 무시됨)${NC}"
+    elif [ "$is_link" = true ]; then
         # 링크 대상 확인
         if is_broken_link "$source"; then
             echo -e "    ${RED}✗ 부서진 링크!${NC}"
@@ -70,9 +74,16 @@ for path in "${PARSED_INCLUDE_PATHS[@]}"; do
             local link_target=$(readlink "$source")
             echo -e "    ${YELLOW}⚠ 잘못된 링크 대상${NC}"
             echo -e "    ${YELLOW}  현재: $link_target${NC}"
-            echo -e "    ${YELLOW}  예상: $expected_target${NC}"
+            echo -e "    ${YELLOW}  예상: $target${NC}"
         fi
     else
+        # 재귀적 처리 필요한 경로는 디렉토리 자체가 링크가 아닌 게 정상
+        if has_exclusions_under "$path"; then
+            if [ -d "$source" ] || [ -d "$target" ]; then
+                echo -e "    ${CYAN}→ 재귀적 처리 (내부 항목 개별 링크)${NC}"
+            fi
+        fi
+
         if [ "$exists_local" = true ]; then
             echo -e "    ${GREEN}✓ 로컬 존재${NC}"
         else

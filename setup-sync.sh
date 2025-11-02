@@ -66,6 +66,7 @@ analyze_existing_links() {
     local broken_links=()
     local wrong_target_links=()
     local missing_links=()
+    local recursive_paths=()
 
     echo "🔍 기존 동기화 상태 확인 중..."
     echo ""
@@ -76,6 +77,24 @@ analyze_existing_links() {
     # 각 포함 경로 확인
     for path in "${PARSED_INCLUDE_PATHS[@]}"; do
         local source="$LOCAL_USER_DIR/$path"
+        local target="$ICLOUD_DIR/$path"
+
+        # 재귀적 처리가 필요한 경로인지 확인
+        if has_exclusions_under "$path"; then
+            # 재귀적 처리 필요 - 디렉토리 자체가 링크가 아닌 게 정상
+            recursive_paths+=("$path")
+
+            # 로컬과 iCloud 둘 다 없으면 무시
+            if [ ! -e "$source" ] && [ ! -e "$target" ]; then
+                continue
+            fi
+
+            # 디렉토리가 존재하면 내부 항목 확인 필요
+            if [ -d "$source" ] || [ -d "$target" ]; then
+                # 내부 재귀적 처리는 나중에 recursive_link_path에서 처리
+                continue
+            fi
+        fi
 
         # 링크인지 확인
         if [ -L "$source" ]; then
@@ -87,14 +106,29 @@ analyze_existing_links() {
                 wrong_target_links+=("$path")
             fi
         else
-            # 링크가 아니면 누락된 것
-            missing_links+=("$path")
+            # 재귀적 처리가 아닌 경우에만 누락 체크
+            if ! has_exclusions_under "$path"; then
+                # 로컬과 iCloud 둘 다 없으면 무시 (설정에는 있지만 실제 파일은 없는 경우)
+                if [ ! -e "$source" ] && [ ! -e "$target" ]; then
+                    continue
+                fi
+
+                # 링크가 아니면 누락된 것
+                missing_links+=("$path")
+            fi
         fi
     done
 
     # 상태 출력
     if [ ${#correct_links[@]} -gt 0 ]; then
         echo -e "${GREEN}✅ 올바른 링크: ${#correct_links[@]}개${NC}"
+    fi
+
+    if [ ${#recursive_paths[@]} -gt 0 ]; then
+        echo -e "${CYAN}🔄 재귀적 처리 경로: ${#recursive_paths[@]}개${NC}"
+        for path in "${recursive_paths[@]}"; do
+            echo "   • $path (내부 항목 개별 링크)"
+        done
     fi
 
     if [ ${#broken_links[@]} -gt 0 ]; then
@@ -125,9 +159,10 @@ analyze_existing_links() {
     BROKEN_LINKS=("${broken_links[@]}")
     WRONG_TARGET_LINKS=("${wrong_target_links[@]}")
     MISSING_LINKS=("${missing_links[@]}")
+    RECURSIVE_PATHS=("${recursive_paths[@]}")
 
     # 수정이 필요한지 반환
-    if [ ${#broken_links[@]} -gt 0 ] || [ ${#wrong_target_links[@]} -gt 0 ] || [ ${#missing_links[@]} -gt 0 ]; then
+    if [ ${#broken_links[@]} -gt 0 ] || [ ${#wrong_target_links[@]} -gt 0 ] || [ ${#missing_links[@]} -gt 0 ] || [ ${#recursive_paths[@]} -gt 0 ]; then
         return 0  # 수정 필요
     else
         return 1  # 모두 올바름
@@ -187,7 +222,7 @@ main() {
     echo ""
 
     # 수정이 필요한 항목만 처리
-    for path in "${BROKEN_LINKS[@]}" "${WRONG_TARGET_LINKS[@]}" "${MISSING_LINKS[@]}"; do
+    for path in "${BROKEN_LINKS[@]}" "${WRONG_TARGET_LINKS[@]}" "${MISSING_LINKS[@]}" "${RECURSIVE_PATHS[@]}"; do
         if [ -n "$path" ]; then
             echo "📦 처리 중: $path"
             recursive_link_path "$path" 0
@@ -214,6 +249,8 @@ main() {
         local status=""
         if [[ " ${CORRECT_LINKS[@]} " =~ " $path " ]]; then
             status=" ${GREEN}(이미 동기화됨)${NC}"
+        elif [[ " ${RECURSIVE_PATHS[@]} " =~ " $path " ]]; then
+            status=" ${CYAN}(재귀 처리됨)${NC}"
         elif [[ " ${BROKEN_LINKS[@]} ${WRONG_TARGET_LINKS[@]} ${MISSING_LINKS[@]} " =~ " $path " ]]; then
             status=" ${YELLOW}(수리/추가됨)${NC}"
         fi
