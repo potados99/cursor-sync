@@ -5,8 +5,8 @@
 ```bash
 # iCloud Drive의 원하는 위치에 클론
 cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared"
-git clone git@github.com:potados99/cursor-sync.git Cursor
-cd Cursor
+git clone git@github.com:potados99/cursor-sync.git cursor-sync
+cd cursor-sync
 ```
 
 > ⚠️ **중요:** 설정 파일은 이 저장소 내부(`CursorSettings/`)에 저장됩니다!
@@ -18,7 +18,7 @@ cd Cursor
 동기화할 항목을 변경하고 싶다면:
 
 ```bash
-cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"
+# 클론한 디렉토리로 이동
 vim sync-config.sh
 ```
 
@@ -30,7 +30,7 @@ vim sync-config.sh
 
 ### 1️⃣ 확장 프로그램 백업
 ```bash
-cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"
+# 저장소 디렉토리에서
 bash export-extensions.sh
 ```
 
@@ -63,13 +63,13 @@ Cursor를 실행하면 모든 설정이 적용되어 있습니다!
 
 ### 확장 프로그램이 바뀌었을 때
 ```bash
-cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"
+# 저장소 디렉토리에서
 bash export-extensions.sh
 ```
 
 ### 동기화 해제하고 싶을 때
 ```bash
-cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"
+# 저장소 디렉토리에서
 bash unlink-sync.sh
 ```
 
@@ -80,7 +80,8 @@ bash unlink-sync.sh
 `~/.zshrc`에 추가:
 
 ```bash
-alias cs='cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"'
+# 클론한 경로에 맞게 수정하세요
+alias cs='cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/cursor-sync"'
 alias cursor-backup='cs && bash export-extensions.sh'
 ```
 

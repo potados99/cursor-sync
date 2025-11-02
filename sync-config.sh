@@ -7,7 +7,10 @@
 # 경로 설정
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ICLOUD_DIR="/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor/CursorSettings"
+# 이 스크립트가 위치한 디렉토리를 기준으로 iCloud 경로 계산
+# 어디에 클론하든 자동으로 경로 설정됨
+SCRIPT_DIR_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ICLOUD_DIR="$SCRIPT_DIR_PATH/CursorSettings"
 LOCAL_USER_DIR="$HOME/Library/Application Support/Cursor/User"
 BACKUP_DIR="$HOME/Library/Application Support/Cursor/User.backups"
 

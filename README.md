@@ -20,16 +20,16 @@
 ### iCloud Drive 내 아무 곳에나 클론
 
 ```bash
-# 예시: iCloud의 Shared/Cursor 경로에 클론
+# iCloud Drive의 원하는 위치에 클론
 cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared"
-git clone git@github.com:potados99/cursor-sync.git Cursor
-cd Cursor
+git clone git@github.com:potados99/cursor-sync.git cursor-sync
+cd cursor-sync
 ```
 
 또는 원하는 다른 경로:
 
 ```bash
-# 예시: Documents 폴더에 클론
+# 예시: Documents 폴더
 cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Documents"
 git clone git@github.com:potados99/cursor-sync.git cursor-sync
 cd cursor-sync
@@ -157,7 +157,7 @@ bash install-extensions-2025-11-02-114809.sh
 
 ```bash
 # 1. 저장소로 이동 (iCloud 동기화 완료 대기 후)
-cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"
+cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/cursor-sync"
 
 # 2. 자동 셋업 실행
 bash setup-new-mac.sh
@@ -168,8 +168,8 @@ bash setup-new-mac.sh
 ```bash
 # 1. iCloud Drive에 클론
 cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared"
-git clone git@github.com:potados99/cursor-sync.git Cursor
-cd Cursor
+git clone git@github.com:potados99/cursor-sync.git cursor-sync
+cd cursor-sync
 
 # 2. 자동 셋업 실행
 bash setup-new-mac.sh
@@ -188,12 +188,13 @@ bash setup-new-mac.sh
 iCloud Drive에 설정이 동기화되었는지 확인합니다.
 
 ```bash
-ls "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor/CursorSettings"
+# 클론한 디렉토리로 이동 (경로는 클론 위치에 따라 다를 수 있음)
+cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/cursor-sync"
+ls CursorSettings
 ```
 
 #### Step 2: Cursor 설정 동기화
 ```bash
-cd "/Users/$USER/Library/Mobile Documents/com~apple~CloudDocs/Shared/Cursor"
 bash setup-sync.sh
 ```
 
