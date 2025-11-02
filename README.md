@@ -1,6 +1,19 @@
 # 🔄 Cursor 설정 동기화
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Shell](https://img.shields.io/badge/Shell-Bash-green.svg)](https://www.gnu.org/software/bash/)
+[![Platform](https://img.shields.io/badge/Platform-macOS-blue.svg)](https://www.apple.com/macos/)
+
 여러 Mac에서 Cursor 설정을 iCloud로 동기화하는 스크립트 모음입니다.
+
+## ✨ 주요 기능
+
+- 🔗 **심볼릭 링크 기반 동기화** - 실시간 iCloud 동기화
+- ⚙️ **유연한 설정** - 단일 배열로 모든 동기화 제어
+- 🛡️ **안전한 백업** - 자동 백업 및 복원 기능
+- 📦 **확장 프로그램 관리** - 일괄 백업 및 설치
+- 🔍 **설정 검증** - 실행 전 미리 확인
+- 📚 **자세한 문서** - 한글 가이드 및 예제
 
 ## 📦 설치
 
